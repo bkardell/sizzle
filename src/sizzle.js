@@ -1697,7 +1697,7 @@ function setMatcher( preFilter, selector, matcher, postFilter, postFinder, postS
 }
 
 function matcherFromTokens( tokens ) {
-	var checkContext, matcher, j,
+	var checkContext, matcher, j, k, leadingSimple = -1,
 		len = tokens.length,
 		leadingRelative = Expr.relative[ tokens[0].type ],
 		implicitRelative = leadingRelative || Expr.relative[" "],
@@ -1716,6 +1716,7 @@ function matcherFromTokens( tokens ) {
 					matchContext( elem, context, xml ) :
 					matchAnyContext( elem, context, xml ) );
 		} ];
+
 
 	for ( ; i < len; i++ ) {
 		if ( (matcher = Expr.relative[ tokens[i].type ]) ) {
@@ -1744,10 +1745,26 @@ function matcherFromTokens( tokens ) {
 					j < len && toSelector( tokens )
 				);
 			}
-			matchers.push( matcher );
+			
+			// If it is a pseduo with linked simple filters, ex:
+			//     h1.foo:not(...)
+			// it is functionally equivalent but potentially much faster 
+			// to check the simple selectors first
+			if (tokens[i].type === "PSEUDO") {
+				for (k=i-1; k>=0; k--) {
+					if (/CLASS|ATTR|ID|TAG/.test(tokens[k].type)) {
+						leadingSimple = k;
+					} else {
+						break;
+					}
+				}
+				matchers.splice((leadingSimple !== -1) ? leadingSimple : 100, 0, matcher);
+			} else {
+				matchers.push( matcher );
+			}
+			
 		}
 	}
-
 	return elementMatcher( matchers );
 }
 
